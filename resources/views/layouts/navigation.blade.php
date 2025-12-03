@@ -16,6 +16,11 @@
                         {{ __('Dashboard') }}
                     </x-nav-link>
                 </div>
+                @if(auth()->user()->is_admin)
+                    <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.*')">
+                        <span class="text-red-600 font-bold">{{ __('Admin') }}</span>
+                    </x-nav-link>
+                @endif
             </div>
 
             <!-- Settings Dropdown -->
@@ -32,22 +37,22 @@
                             </div>
                         </button>
                     </x-slot>
-
+                    <div class="hidden sm:flex sm:items-center sm:ml-6">
+                        @auth
+                            @php
+                                // Contagem rápida de itens no carrinho
+                                $cartCount = auth()->user()->orders()->where('status', 'draft')->first()?->items->count() ?? 0;
+                            @endphp
+                            <a href="{{ route('order.cart') }}" class="relative p-2 text-gray-400 hover:text-gray-500">
+                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                @if($cartCount > 0)
+                                    <span class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 transform translate-x-1/4 -translate-y-1/4 bg-red-600 rounded-full">{{ $cartCount }}</span>
+                                @endif
+                            </a>
+                        @endauth
+                    </div>
                     <x-slot name="content">
-                        <div class="hidden sm:flex sm:items-center sm:ml-6">
-                            @auth
-                                @php
-                                    // Contagem rápida de itens no carrinho
-                                    $cartCount = auth()->user()->orders()->where('status', 'draft')->first()?->items->count() ?? 0;
-                                @endphp
-                                <a href="{{ route('order.cart') }}" class="relative p-2 text-gray-400 hover:text-gray-500">
-                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                                    @if($cartCount > 0)
-                                        <span class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 transform translate-x-1/4 -translate-y-1/4 bg-red-600 rounded-full">{{ $cartCount }}</span>
-                                    @endif
-                                </a>
-                            @endauth
-                        </div>
+
                         <x-dropdown-link :href="route('profile.edit')">
                             {{ __('Profile') }}
                         </x-dropdown-link>
@@ -85,7 +90,6 @@
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
         </div>
-
         <!-- Responsive Settings Options -->
         <div class="pt-4 pb-1 border-t border-gray-200">
             <div class="px-4">

@@ -92,10 +92,11 @@ Route::middleware(['auth'])->prefix('criador')->name('creator.')->group(function
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
     
-    // Gestão de Usuários
     Route::resource('/usuarios', AdminUserController::class);
-    // [CORREÇÃO] Esta é a linha que faltava para o erro sumir:
+    
+    // --- ESTA É A LINHA QUE FALTA ---
     Route::get('/usuarios/{user}/login-as', [AdminUserController::class, 'loginAs'])->name('users.login-as');
+    // --------------------------------
 
     Route::resource('/comunidades', AdminCommunityController::class);
     Route::resource('/produtos', AdminProductController::class)->only(['index', 'edit', 'update', 'destroy']);

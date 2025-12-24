@@ -33,10 +33,7 @@
                             <span class="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{{ $cartCount }}</span>
                         @endif
                     </a>
-                @endauth
-
-                @auth
-                    <a href="{{ route('dashboard') }}" class="text-sm text-gray-500 hover:text-indigo-600">Meu Painel</a>
+                    <a href="{{ route('dashboard') }}" class="text-sm text-gray-500 hover:text-indigo-600">Painel</a>
                 @else
                     <a href="{{ route('login') }}" class="text-sm font-bold text-indigo-600 hover:text-indigo-800">Entrar</a>
                 @endauth
@@ -54,28 +51,47 @@
     @endif
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
             <div class="grid grid-cols-1 md:grid-cols-2">
                 
-                <div class="bg-gray-100 p-8 flex items-center justify-center">
-                    <img src="{{ asset('storage/' . $product->image_mockup) }}" class="max-h-[500px] w-auto rounded-lg shadow-lg object-contain transform transition hover:scale-105 duration-500">
+                <div class="bg-gray-100 p-8 flex items-center justify-center relative">
+                    <div class="absolute top-4 left-4 z-10">
+                        @if($product->type === 'digital')
+                            <span class="bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide shadow-sm flex items-center gap-1">
+                                ⚡ Digital
+                            </span>
+                        @else
+                            <span class="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide shadow-sm flex items-center gap-1">
+                                👕 Físico
+                            </span>
+                        @endif
+                    </div>
+
+                    @if($product->image_path)
+                        <img src="{{ asset('storage/' . $product->image_path) }}" class="max-h-[500px] w-auto rounded-lg shadow-lg object-contain transform transition hover:scale-105 duration-500">
+                    @else
+                        <div class="w-64 h-64 flex items-center justify-center bg-gray-200 rounded text-gray-400">Sem Imagem</div>
+                    @endif
                 </div>
 
                 <div class="p-8 md:p-12 flex flex-col justify-center" 
                      x-data="{ 
-                        price: {{ $product->baseProduct->base_price + $product->profit }},
-                        options: {{ json_encode($product->baseProduct->options_json) }},
+                        // Mágica: Usa o Accessor total_price do Model
+                        price: {{ $product->total_price }},
+                        
+                        // Mágica 2: Se não tiver baseProduct, options é null (seguro)
+                        options: {{ $product->baseProduct ? json_encode($product->baseProduct->options_json) : 'null' }},
+                        
                         selections: {},
                         
-                        // Verifica se todas as variações foram escolhidas
                         isValid() {
-                            if (!this.options) return true; // Se não tem variação, tá válido
+                            if (!this.options) return true; // Se é digital/sem opções, tá válido
                             return Object.keys(this.selections).length === Object.keys(this.options).length;
                         }
                      }">
 
                     <div class="uppercase tracking-wide text-sm text-indigo-500 font-semibold mb-1">
-                        {{ $product->baseProduct->name }}
+                        {{ $product->baseProduct ? $product->baseProduct->name : 'Produto Digital' }}
                     </div>
                     
                     <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4 leading-tight">
@@ -86,16 +102,16 @@
                         R$ <span x-text="price.toFixed(2).replace('.', ',')"></span>
                     </div>
 
-                    <p class="text-gray-600 mb-8 leading-relaxed">
+                    <div class="prose text-gray-600 mb-8 leading-relaxed whitespace-pre-line">
                         {{ $product->description }}
-                    </p>
+                    </div>
 
                     <form action="{{ route('order.store') }}" method="POST">
                         @csrf
                         <input type="hidden" name="product_id" value="{{ $product->id }}">
                         
                         <template x-if="options">
-                            <div class="space-y-4 mb-8">
+                            <div class="space-y-4 mb-8 bg-gray-50 p-4 rounded-lg border border-gray-200">
                                 <template x-for="(values, name) in options" :key="name">
                                     <div>
                                         <label class="block text-sm font-bold text-gray-700 mb-2" x-text="name"></label>
@@ -129,9 +145,15 @@
                         @endauth
                     </form>
 
-                    <p class="text-xs text-gray-400 mt-4 text-center">
-                        Pagamento via PIX • Compra Segura
-                    </p>
+                    @if($product->type === 'digital')
+                        <p class="text-xs text-purple-600 mt-4 text-center bg-purple-50 p-2 rounded border border-purple-100">
+                            <i class="fa-solid fa-lock mr-1"></i> <strong>Entrega Automática:</strong> Você receberá o link de acesso imediatamente após o pagamento.
+                        </p>
+                    @else
+                        <p class="text-xs text-gray-400 mt-4 text-center">
+                            <i class="fa-solid fa-truck mr-1"></i> Produção sob demanda • Compra Segura
+                        </p>
+                    @endif
                 </div>
             </div>
         </div>

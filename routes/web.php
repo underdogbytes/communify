@@ -33,7 +33,12 @@ use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/explorar', [CommunityController::class, 'index'])->name('community.index');
 Route::get('/c/{slug}', [CommunityController::class, 'show'])->name('community.show');
-Route::get('/p/{slug}', [ProductController::class, 'show'])->name('product.show');
+
+// CORREÇÃO: Mudei para /loja/ para diferenciar de post
+Route::get('/loja/{slug}', [ProductController::class, 'show'])->name('product.show');
+
+// Artigos continuam no /p/
+Route::get('/p/{slug}', [PostController::class, 'show'])->name('post.show');
 
 // === ROTAS PADRÃO DO BREEZE (Login/Dashboard) ===
 Route::get('/dashboard', [HomeController::class, 'dashboard'])
@@ -44,6 +49,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // Rotas de Higiene (Editar/Excluir)
+    Route::delete('/posts/{post}', [PostController::class, 'destroy'])->name('posts.destroy');
+    Route::get('/posts/{post}/edit', [PostController::class, 'edit'])->name('posts.edit');
+    Route::put('/posts/{post}', [PostController::class, 'update'])->name('posts.update');
 });
 
 // === JORNADA 2: LEITOR/COMPRADOR (Logado) ===
@@ -51,6 +60,12 @@ Route::middleware('auth')->group(function () {
     // Seguir Comunidade
     Route::post('/community/{community}/follow', [CommunityController::class, 'follow'])->name('community.follow');
     
+    // Tela de Escrever Artigo
+    Route::get('/community/{community}/escrever', [PostController::class, 'createArticle'])->name('community.posts.create');
+    
+    // Postar na Timeline (Short Post)
+    Route::post('/community/{community}/posts', [PostController::class, 'store'])->name('community.posts.store');
+
     // Comentar
     Route::post('/post/{post}/comment', [PostController::class, 'storeComment'])->name('post.comment.store');
 

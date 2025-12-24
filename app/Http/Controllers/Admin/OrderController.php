@@ -25,22 +25,30 @@ class OrderController extends Controller
     /**
      * Mostra detalhes para aprovação
      */
-    public function show(Order $pedido) // Laravel faz o bind automático pelo ID
+    public function show(Order $pedido)
     {
-        return view('admin.orders.show', compact('pedido')); // Passamos como $pedido para a view
+        // Precisamos passar 'order' para a view, pois é o nome que usamos lá dentro ($order->id)
+        return view('admin.orders.show', ['order' => $pedido]);
     }
 
     /**
      * Atualiza o status (Aprovar Pagamento)
      */
-    public function update(Request $request, Order $pedido)
+public function update(Request $request, $id) // Mudei de Order $pedido para $id para testar
     {
-        // Se clicar em "Aprovar Pagamento"
-        if ($request->has('approve_payment')) {
-            $pedido->update(['status' => 'paid']);
-            return redirect()->route('admin.pedidos.index')->with('success', 'Pagamento aprovado! Pedido liberado.');
-        }
+        // DEBUG: Vamos ver se está chegando aqui
+        // dd($request->all(), $id); 
 
-        return back();
+        $pedido = Order::findOrFail($id); // Força a busca manual
+
+        $request->validate([
+            'status' => 'required|in:paid,shipped,delivered,canceled'
+        ]);
+
+        $pedido->update([
+            'status' => $request->status
+        ]);
+
+        return back()->with('success', 'Status atualizado para: ' . $request->status);
     }
 }

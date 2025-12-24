@@ -8,15 +8,13 @@ use Illuminate\Http\Request;
 class ProductController extends Controller
 {
     /**
-     * (J1-04) Página Pública do Produto
+     * Página Pública de Detalhes do Produto (Híbrida)
      */
     public function show($slug)
     {
-        // Busca o produto pelo slug, trazendo junto o Produto Base (para pegar as opções de tamanho/cor)
-        // e a Comunidade (para mostrar o header)
         $product = Product::where('slug', $slug)
-            ->with(['baseProduct', 'community'])
             ->where('is_active', true)
+            ->with(['community', 'baseProduct']) // Traz baseProduct SE existir
             ->firstOrFail();
 
         return view('product.show', compact('product'));

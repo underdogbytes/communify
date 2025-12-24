@@ -17,9 +17,10 @@ class Product extends Model
         'slug',
         'description',
         'profit',
-        'image_mockup',
+        'image_path',   // Padronizado
         'file_artwork',
-        'digital_link',
+        'type',         // Novo
+        'delivery_url', // Novo
         'is_active',
     ];
 
@@ -28,27 +29,30 @@ class Product extends Model
         'is_active' => 'boolean',
     ];
     
-    // Gera o slug automaticamente (ex: Camiseta Legal -> camiseta-legal)
     protected static function boot()
     {
         parent::boot();
-
         static::creating(function ($product) {
-            $product->slug = Str::slug($product->name);
+            $product->slug = Str::slug($product->name) . '-' . uniqid();
         });
     }
 
-    // --- RELACIONAMENTOS ---
-
-    // Pertence a uma comunidade
     public function community()
     {
         return $this->belongsTo(Community::class);
     }
 
-    // É baseado em um Produto Base (Molde)
     public function baseProduct()
     {
         return $this->belongsTo(BaseProduct::class);
+    }
+
+    // --- MÁGICA ---
+    // Retorna o preço total (Custo Base + Lucro)
+    // Se for digital, Custo Base é 0, então retorna só o Lucro.
+    public function getTotalPriceAttribute()
+    {
+        $baseCost = $this->baseProduct ? $this->baseProduct->base_price : 0;
+        return $baseCost + $this->profit;
     }
 }

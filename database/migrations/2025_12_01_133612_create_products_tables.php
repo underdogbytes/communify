@@ -8,38 +8,38 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // 1. Tabela do ADMIN: Os produtos "molde" (Camiseta, Caneca, etc.)
+        // 1. Tabela Molde (Seeder)
         Schema::create('base_products', function (Blueprint $table) {
             $table->id();
-            $table->string('name'); // Ex: "Camiseta", "Cartaz A4"
+            $table->string('name'); 
             $table->text('description')->nullable();
-            $table->decimal('base_price', 10, 2); // Nosso preço de custo (Ex: 25.00)
-            
-            // Aqui ficam as variações possíveis (Ex: Tamanho P, M, G)
-            // Se for null, o produto não tem variação (ex: Caneca)
+            $table->decimal('base_price', 10, 2); 
             $table->json('options_json')->nullable(); 
-            
             $table->timestamps();
         });
 
-        // 2. Tabela do CRIADOR: Os produtos à venda na loja dele
+        // 2. Tabela de Vendas (Híbrida)
         Schema::create('products', function (Blueprint $table) {
             $table->id();
             $table->foreignId('community_id')->constrained()->onDelete('cascade');
-            // Se deletarmos o produto base, não deleta o produto da loja, apenas impede
-            $table->foreignId('base_product_id')->constrained()->onDelete('restrict');
             
-            $table->string('name'); // Ex: "Camiseta 'Café & Código'"
+            // Nullable para permitir produtos digitais
+            $table->foreignId('base_product_id')->nullable()->constrained()->onDelete('restrict');
+            
+            $table->string('name');
             $table->string('slug')->unique();
-            $table->text('description');
+            $table->text('description')->nullable();
             
-            // O lucro que o Criador escolheu (Ex: 15.00)
+            // Apenas o lucro é salvo no banco
             $table->decimal('profit', 10, 2); 
             
-            // Arquivos (Caminhos das imagens)
-            $table->string('image_mockup'); // Foto da loja
-            $table->string('file_artwork'); // Arquivo para impressão
-            $table->string('digital_link')->nullable(); // Para produtos digitais
+            // Arquivos
+            $table->string('image_path')->nullable(); // Padronizado
+            $table->string('file_artwork')->nullable(); // Só para físicos (POD)
+            
+            // Gatekeeper (Digital)
+            $table->string('type')->default('physical'); // 'physical' ou 'digital'
+            $table->text('delivery_url')->nullable();    // Link secreto
             
             $table->boolean('is_active')->default(true);
             $table->timestamps();

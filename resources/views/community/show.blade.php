@@ -6,6 +6,8 @@
     <title>{{ $community->name }} - Communify</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="//unpkg.com/alpinejs" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>[x-cloak] { display: none !important; }</style>
 </head>
 <body class="bg-gray-100 text-gray-900 font-sans antialiased">
 
@@ -27,11 +29,6 @@
                             @endif
                         </a>
                         
-                        <a href="{{ route('dashboard') }}" class="text-sm text-gray-700 hover:text-indigo-600">Meu Painel</a>
-                    @else
-                        <a href="{{ route('login') }}" class="text-sm font-bold text-indigo-600">Entrar</a>
-                    @endauth
-                    @auth
                         <a href="{{ route('dashboard') }}" class="text-sm text-gray-700 hover:text-indigo-600">Meu Painel</a>
                     @else
                         <a href="{{ route('login') }}" class="text-sm font-bold text-indigo-600">Entrar</a>
@@ -115,49 +112,116 @@
         </div>
 
         <div x-show="tab === 'feed'" class="max-w-3xl">
-            @forelse($community->posts as $post)
-                <div class="bg-white rounded-lg shadow mb-6 overflow-hidden">
-                    <div class="p-6">
-                        <div class="flex items-center mb-4">
-                            <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-500">
-                                {{ substr($post->user->name, 0, 1) }}
-                            </div>
-                            <div class="ml-3">
-                                <div class="text-sm font-bold text-gray-900">{{ $post->user->name }}</div>
-                                <div class="text-xs text-gray-500">{{ $post->created_at->diffForHumans() }}</div>
+            
+            @if(session('success'))
+                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+                    <span class="block sm:inline">{{ session('success') }}</span>
+                </div>
+            @endif
+
+            @if(Auth::id() === $community->user_id)
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
+                    <div class="flex items-start gap-4">
+                        <div class="flex-shrink-0">
+                            <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
+                                {{ substr(Auth::user()->name, 0, 1) }}
                             </div>
                         </div>
-                        <h2 class="text-xl font-bold text-gray-900 mb-2">{{ $post->title }}</h2>
-                        <div class="text-gray-700 whitespace-pre-line mb-4">{{ $post->body }}</div>
-                        
-                        @if($post->image)
-                            <img src="{{ asset('storage/' . $post->image) }}" class="w-full rounded-lg mb-4">
-                        @endif
 
-                        <div class="border-t pt-4">
-                            <h4 class="font-bold text-sm text-gray-500 mb-3">Comentários ({{ $post->comments->count() }})</h4>
-                            
-                            <div class="space-y-3 mb-4">
-                                @foreach($post->comments as $comment)
-                                    <div class="bg-gray-50 p-3 rounded text-sm">
-                                        <span class="font-bold text-gray-800">{{ $comment->user->name }}:</span>
-                                        <span class="text-gray-600">{{ $comment->content }}</span>
+                        <div class="flex-1">
+                            <form action="{{ route('community.posts.store', $community) }}" method="POST">
+                                @csrf
+                                <textarea 
+                                    name="content" 
+                                    rows="2" 
+                                    class="w-full border-none focus:ring-0 text-lg placeholder-gray-400 resize-none p-0 focus:outline-none"
+                                    placeholder="O que está acontecendo na comunidade?"></textarea>
+                                
+                                <div class="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
+                                    <div class="flex gap-4 text-gray-400 text-sm">
+                                        <a href="{{ route('community.posts.create', $community) }}" class="hover:text-indigo-600 flex items-center gap-1 transition">
+                                            <i class="fa-regular fa-newspaper"></i> <span>Escrever Artigo</span>
+                                        </a>
                                     </div>
-                                @endforeach
+                                    
+                                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-1.5 rounded-full font-bold text-sm transition">
+                                        Postar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            @forelse($community->posts as $post)
+                <div class="bg-white rounded-lg shadow mb-6 overflow-hidden border border-gray-100">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center">
+                                <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-500">
+                                    {{ substr($post->user->name, 0, 1) }}
+                                </div>
+                                <div class="ml-3">
+                                    <div class="text-sm font-bold text-gray-900">{{ $post->user->name }}</div>
+                                    <div class="text-xs text-gray-500">{{ $post->created_at->diffForHumans() }}</div>
+                                </div>
                             </div>
 
-                            @auth
-                                <form action="{{ route('post.comment.store', $post->id) }}" method="POST" class="flex gap-2">
-                                    @csrf
-                                    <input type="text" name="content" required placeholder="Escreva um comentário..." 
-                                           class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-md hover:bg-indigo-700">
-                                        Enviar
+                            @if(auth()->id() === $post->user_id)
+                                <div x-data="{ open: false }" class="relative">
+                                    <button @click="open = !open" class="text-gray-400 hover:text-gray-600 focus:outline-none">
+                                        <i class="fa-solid fa-ellipsis"></i>
                                     </button>
-                                </form>
-                            @else
-                                <p class="text-sm text-gray-400">Faça login para comentar.</p>
-                            @endauth
+
+                                    <div x-show="open" @click.away="open = false" 
+                                         class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 border border-gray-100"
+                                         style="display: none;">
+                                        
+                                        @if($post->type === 'article')
+                                            <a href="{{ route('posts.edit', $post->id) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                                <i class="fa-solid fa-pen mr-2"></i> Editar Artigo
+                                            </a>
+                                        @endif
+
+                                        <form action="{{ route('posts.destroy', $post->id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja apagar?');">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                                                <i class="fa-solid fa-trash mr-2"></i> Excluir
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                        
+                        @if($post->type === 'article')
+                            <div class="mb-4">
+                                <a href="{{ route('post.show', $post->slug) }}" class="block group">
+                                    <h2 class="text-2xl font-bold text-gray-900 mb-2 group-hover:text-indigo-600 transition">
+                                        {{ $post->title }}
+                                    </h2>
+                                    <p class="text-gray-600 leading-relaxed mb-4">
+                                        {{ \Illuminate\Support\Str::limit(strip_tags(\Illuminate\Support\Str::markdown($post->content)), 200) }}
+                                    </p>
+                                    <div class="text-indigo-600 font-bold text-sm flex items-center gap-1">
+                                        Ler artigo completo <span class="group-hover:translate-x-1 transition">&rarr;</span>
+                                    </div>
+                                </a>
+                            </div>
+                        @else
+                            <div class="text-gray-800 whitespace-pre-line mb-4 text-lg">
+                                {{ $post->content }}
+                            </div>
+                        @endif
+
+                        <div class="border-t pt-4 mt-4">
+                            <div class="flex items-center justify-between text-gray-500 text-sm mb-4">
+                                <span><i class="fa-regular fa-comment"></i> {{ $post->comments->count() }} comentários</span>
+                                @if($post->type === 'article')
+                                    <span><i class="fa-regular fa-clock"></i> Artigo Longo</span>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -171,17 +235,31 @@
         <div x-show="tab === 'store'" x-cloak>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 @forelse($community->products as $product)
-                    <div class="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition group">
+                    <div class="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition group border border-gray-100">
                         <div class="h-64 overflow-hidden relative">
-                            <img src="{{ asset('storage/' . $product->image_mockup) }}" class="w-full h-full object-cover transform group-hover:scale-105 transition duration-500">
+                            @if($product->image_path)
+                                <img src="{{ asset('storage/' . $product->image_path) }}" class="w-full h-full object-cover transform group-hover:scale-105 transition duration-500">
+                            @else
+                                <div class="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">Sem Imagem</div>
+                            @endif
+
+                            <div class="absolute top-2 right-2 px-2 py-1 text-xs font-bold rounded shadow {{ $product->type === 'digital' ? 'bg-purple-100 text-purple-700' : 'bg-white text-gray-700' }}">
+                                {{ $product->type === 'digital' ? '⚡ Digital' : ($product->baseProduct->name ?? 'Físico') }}
+                            </div>
                         </div>
+
                         <div class="p-6">
-                            <div class="text-xs text-indigo-500 font-bold uppercase mb-1">{{ $product->baseProduct->name }}</div>
+                            <div class="text-xs text-indigo-500 font-bold uppercase mb-1">
+                                {{ $product->baseProduct->name ?? 'Produto Digital' }}
+                            </div>
+                            
                             <h3 class="text-lg font-bold text-gray-900 mb-2 truncate">{{ $product->name }}</h3>
+                            
                             <div class="flex items-center justify-between mt-4">
                                 <span class="text-xl font-bold text-gray-900">
-                                    R$ {{ number_format($product->baseProduct->base_price + $product->profit, 2, ',', '.') }}
+                                    R$ {{ number_format($product->total_price, 2, ',', '.') }}
                                 </span>
+                                
                                 <a href="{{ route('product.show', $product->slug) }}" class="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded hover:bg-indigo-700 transition">
                                     Ver Detalhes
                                 </a>

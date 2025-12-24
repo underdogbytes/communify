@@ -18,17 +18,16 @@ class OrderController extends Controller
     // LISTAR O CARRINHO
     public function cart()
     {
-        // Busca o pedido que está em rascunho (draft)
         $order = auth()->user()->orders()->where('status', 'draft')->with('items.product')->first();
 
         if (!$order) {
-            return view('order.empty'); // Se não tiver carrinho, mostra vazio
+            return view('order.empty');
         }
 
         return view('order.show', compact('order'));
     }
 
-    // ADICIONAR AO CARRINHO
+    // ADICIONAR AO CARRINHO (CORRIGIDO)
     public function store(Request $request)
     {
         $request->validate([
@@ -37,16 +36,19 @@ class OrderController extends Controller
         ]);
 
         $product = Product::findOrFail($request->product_id);
-        $unitPrice = $product->baseProduct->base_price + $product->profit;
+        
+        // CORREÇÃO: Usamos o Accessor do Model em vez de calcular na mão
+        // Isso evita o erro "attempt to read property on null"
+        $unitPrice = $product->total_price;
 
         // 1. Tenta achar um carrinho aberto
         $order = Order::where('user_id', auth()->id())->where('status', 'draft')->first();
 
-        // 2. Se não achar, cria um NOVO com status 'draft'
+        // 2. Se não achar, cria um NOVO
         if (!$order) {
             $order = Order::create([
                 'user_id' => auth()->id(),
-                'status' => 'draft', // <--- ISSO É CRUCIAL
+                'status' => 'draft',
                 'total_amount' => 0, 
                 'shipping_cost' => 0,
                 'donation_amount' => 0,
@@ -71,11 +73,10 @@ class OrderController extends Controller
 
 
     /**
-         * Remover item do carrinho
+     * Remover item do carrinho
      */
     public function removeItem(OrderItem $item)
     {
-        // Segurança: O item deve pertencer a um rascunho do usuário logado
         if ($item->order->user_id !== auth()->id() || $item->order->status !== 'draft') {
             abort(403);
         }
@@ -83,20 +84,18 @@ class OrderController extends Controller
         $order = $item->order;
         $item->delete();
 
-        // Recalcula o total do pedido
         $this->recalculateOrderTotal($order);
 
-        // Se o pedido ficou vazio, deleta o pedido também para limpar
         if ($order->items()->count() === 0) {
             $order->delete();
-            return redirect()->route('order.cart'); // Vai cair na tela "Vazio"
+            return redirect()->route('order.cart');
         }
 
         return back()->with('success', 'Item removido.');
     }
 
     /**
-     * Atualizar Quantidade (+ ou -)
+     * Atualizar Quantidade
      */
     public function updateItemQuantity(Request $request, OrderItem $item)
     {
@@ -104,7 +103,6 @@ class OrderController extends Controller
             abort(403);
         }
 
-        // Ação: 'increase' ou 'decrease'
         $action = $request->input('action');
 
         if ($action === 'increase') {
@@ -112,10 +110,6 @@ class OrderController extends Controller
         } elseif ($action === 'decrease') {
             if ($item->quantity > 1) {
                 $item->decrement('quantity');
-            } else {
-                // Se for 1 e tentar diminuir, remove o item? 
-                // Geralmente é melhor deixar o botão remover cuidar disso, 
-                // mas vamos manter o mínimo 1 aqui.
             }
         }
 
@@ -125,29 +119,26 @@ class OrderController extends Controller
     }
 
     /**
-     * Função auxiliar para recalcular totais (Privada)
+     * Função auxiliar para recalcular totais
      */
     private function recalculateOrderTotal(Order $order)
     {
-        // Soma: (Preço Unitário * Quantidade) de todos os itens
         $itemsTotal = $order->items->sum(function($item) {
             return $item->price * $item->quantity;
         });
 
-        $order->total_amount = $itemsTotal; // Ainda sem frete/doação (só soma itens)
+        $order->total_amount = $itemsTotal;
         $order->save();
     }
 
-
-
-    // MOSTRAR CHECKOUT (Se draft) OU PEDIDO (Se pago)
+    // MOSTRAR CHECKOUT
     public function show(Order $order)
     {
         if ($order->user_id !== auth()->id()) abort(403);
         return view('order.show', compact('order'));
     }
 
-    // FINALIZAR COMPRA (Salvar endereço e frete)
+    // FINALIZAR COMPRA (CORRIGIDO PARA DIGITAL)
     public function finalize(Request $request, Order $order)
     {
         if ($order->user_id !== auth()->id()) abort(403);
@@ -174,7 +165,15 @@ class OrderController extends Controller
             'address_state' => $request->address_state,
         ]);
 
-        $shippingCost = 30.00; // Frete fixo simulado
+        // BÔNUS: Lógica de Frete Inteligente
+        // Verifica se existe algum produto físico no carrinho
+        $hasPhysicalItems = $order->items->contains(function($item) {
+            return $item->product->type === 'physical';
+        });
+
+        // Se tiver item físico, cobra 30. Se for tudo digital, frete grátis.
+        $shippingCost = $hasPhysicalItems ? 30.00 : 0.00;
+        
         $donationAmount = $request->input('donation_amount', 0);
         
         $itemsTotal = $order->items->sum(function($item) {
@@ -183,7 +182,6 @@ class OrderController extends Controller
         
         $finalTotal = $itemsTotal + $shippingCost + $donationAmount;
 
-        // Muda status para 'awaiting_payment' (Sai do modo Rascunho)
         $order->update([
             'status' => 'awaiting_payment',
             'shipping_cost' => $shippingCost,

@@ -9,69 +9,75 @@ use App\Models\BaseProduct;
 
 class ProductController extends Controller
 {
-    /**
-     * Lista os produtos da loja do criador
-     */
     public function index()
     {
-        // Busca os produtos da comunidade
         $products = auth()->user()->community->products()->with('baseProduct')->latest()->get();
         return view('creator.products.index', compact('products'));
     }
 
-    /**
-     * Mostra o formulário de adicionar produto
-     */
     public function create()
     {
-        // Busca a lista de produtos base (Camiseta, Caneca, etc) para o criador escolher
         $baseProducts = BaseProduct::all();
         return view('creator.products.create', compact('baseProducts'));
     }
 
-    /**
-     * Salva o novo produto
-     */
     public function store(Request $request)
     {
-        $request->validate([
-            'base_product_id' => 'required|exists:base_products,id',
+        // 1. Validação Básica
+        $rules = [
             'name' => 'required|string|max:255',
-            'description' => 'required|string',
-            'profit' => 'required|numeric|min:0', // O lucro do criador
-            'image_mockup' => 'required|image|max:2048', // Foto para a loja
-            'file_artwork' => 'required|image|max:5120', // Arquivo original (até 5MB)
-        ]);
+            'description' => 'nullable|string',
+            'profit' => 'required|numeric|min:0',
+            'type' => 'required|in:physical,digital',
+            'image' => 'nullable|image|max:2048', // Capa da Loja
+        ];
 
-        // Uploads
-        $mockupPath = $request->file('image_mockup')->store('products/mockups', 'public');
-        $artworkPath = $request->file('file_artwork')->store('products/artwork', 'public'); // Idealmente seria privado, mas no MVP vai public
+        // 2. Validação Condicional
+        if ($request->type === 'physical') {
+            $rules['base_product_id'] = 'required|exists:base_products,id';
+            // Arte é opcional no MVP, mas recomendada para POD
+            $rules['file_artwork'] = 'nullable|image|max:5120'; 
+        }
 
-        // Cria o produto
+        if ($request->type === 'digital') {
+            $rules['delivery_url'] = 'required|url';
+        }
+
+        $validated = $request->validate($rules);
+
+        // 3. Uploads
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('products/covers', 'public');
+        }
+
+        $artworkPath = null;
+        if ($request->hasFile('file_artwork')) {
+            $artworkPath = $request->file('file_artwork')->store('products/artwork', 'local');
+        }
+
+        // 4. Criação
         auth()->user()->community->products()->create([
-            'base_product_id' => $request->base_product_id,
-            'name' => $request->name,
-            'description' => $request->description,
-            'profit' => $request->profit,
-            'image_mockup' => $mockupPath,
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'profit' => $validated['profit'],
+            'image_path' => $imagePath,     // Atenção: O banco agora usa image_path
             'file_artwork' => $artworkPath,
             'is_active' => true,
+            'type' => $validated['type'],
+            // Se for físico, usa o ID. Se for digital, NULL.
+            'base_product_id' => $request->type === 'physical' ? $request->base_product_id : null,
+            'delivery_url' => $request->type === 'digital' ? $request->delivery_url : null,
         ]);
 
-        return redirect()->route('creator.produtos.index')->with('success', 'Produto adicionado à loja!');
+        return redirect()->route('creator.produtos.index')->with('success', 'Produto criado com sucesso!');
     }
 
-    /**
-     * Remove um produto
-     */
-    public function destroy(Product $produto) // O Laravel entende 'produto' por causa da rota resource em pt-br? Vamos garantir com ID
+    public function destroy(Product $produto)
     {
-        // Nota: Como a rota é /produtos/{produto}, o Laravel injeta a variável como $produto
-        // Vamos verificar se pertence à comunidade
         if ($produto->community_id !== auth()->user()->community->id) {
             abort(403);
         }
-
         $produto->delete();
         return back()->with('success', 'Produto removido.');
     }

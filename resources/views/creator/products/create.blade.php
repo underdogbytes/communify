@@ -5,81 +5,115 @@
         </h2>
     </x-slot>
 
-    <div class="py-12" x-data="{ selectedBasePrice: 0 }">
-        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 bg-white border-b border-gray-200">
-                    
-                    <form action="{{ route('creator.produtos.store') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
+    <style>[x-cloak] { display: none !important; }</style>
 
-                        <div class="mb-6">
-                            <label class="block text-sm font-bold text-gray-700 mb-2">Selecione o Tipo de Produto</label>
-                            <select name="base_product_id" required 
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                    @change="selectedBasePrice = parseFloat($event.target.selectedOptions[0].dataset.price)">
-                                <option value="" data-price="0">-- Escolha um item --</option>
-                                @foreach($baseProducts as $base)
-                                    <option value="{{ $base->id }}" data-price="{{ $base->base_price }}">
-                                        {{ $base->name }} (Custo Base: R$ {{ number_format($base->base_price, 2, ',', '.') }})
-                                    </option>
-                                @endforeach
-                            </select>
-                            <p class="text-xs text-gray-500 mt-1">Este é o custo de produção e taxas da plataforma.</p>
+    <div class="py-12" x-data="{ 
+        type: 'physical', 
+        baseProduct: null, 
+        baseProducts: {{ $baseProducts->toJson() }} 
+    }">
+        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
+            
+            <form action="{{ route('creator.produtos.store') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <label class="cursor-pointer group">
+                        <input type="radio" name="type" value="physical" x-model="type" class="peer sr-only">
+                        <div class="p-6 rounded-xl border-2 border-gray-200 bg-white hover:border-indigo-300 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 transition text-center h-full flex flex-col items-center justify-center shadow-sm">
+                            <span class="text-4xl mb-3 group-hover:scale-110 transition">👕</span>
+                            <span class="font-bold text-lg text-gray-800">Produto Físico</span>
+                            <span class="text-xs text-gray-500 mt-1">Camisetas, Canecas (POD)</span>
+                        </div>
+                    </label>
+
+                    <label class="cursor-pointer group">
+                        <input type="radio" name="type" value="digital" x-model="type" class="peer sr-only">
+                        <div class="p-6 rounded-xl border-2 border-gray-200 bg-white hover:border-purple-300 peer-checked:border-purple-600 peer-checked:bg-purple-50 transition text-center h-full flex flex-col items-center justify-center shadow-sm">
+                            <span class="text-4xl mb-3 group-hover:scale-110 transition">⚡</span>
+                            <span class="font-bold text-lg text-gray-800">Digital / Link</span>
+                            <span class="text-xs text-gray-500 mt-1">Ebook, Mentoria, Grupo VIP</span>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
+                    <div class="p-8 bg-white border-b border-gray-200 space-y-6">
+
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Nome do Produto</label>
+                            <input type="text" name="name" required 
+                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" 
+                                   placeholder="Ex: Masterclass Exclusiva ou Caneca Dev">
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                            <div>
-                                <label class="block text-sm font-bold text-gray-700 mb-2">Nome do Produto</label>
-                                <input type="text" name="name" required
-                                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                       placeholder="Ex: Caneca Dev Senior">
-                            </div>
+                        <div x-show="type === 'physical'" x-transition>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Escolha o Molde</label>
+                            <select name="base_product_id" x-model="baseProduct" 
+                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="">Selecione um item...</option>
+                                <template x-for="bp in baseProducts" :key="bp.id">
+                                    <option :value="bp.id" x-text="bp.name + ' (Custo: R$ ' + bp.base_price + ')'"></option>
+                                </template>
+                            </select>
+                        </div>
 
-                            <div x-data="{ profit: 0 }">
-                                <label class="block text-sm font-bold text-gray-700 mb-2">Seu Lucro (R$)</label>
-                                <input type="number" name="profit" step="0.50" min="0" required x-model="profit"
-                                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        <div x-show="type === 'digital'" x-transition x-cloak>
+                            <label class="block text-sm font-bold text-purple-700 mb-2">Link de Acesso (Gatekeeper)</label>
+                            <div class="relative">
+                                <input type="url" name="delivery_url" placeholder="https://drive.google.com/..." 
+                                       class="w-full pl-4 rounded-md border-purple-300 focus:border-purple-500 focus:ring-purple-500 bg-purple-50">
+                            </div>
+                            <p class="text-xs text-purple-600 mt-1">🔒 O cliente só receberá este link após o pagamento confirmado.</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Descrição</label>
+                            <textarea name="description" rows="4" 
+                                      class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                        </div>
+
+                        <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                            <label class="block text-sm font-bold text-gray-700 mb-2" 
+                                   x-text="type === 'physical' ? 'Quanto você quer lucrar? (R$)' : 'Qual o preço de venda? (R$)'">
+                            </label>
+                            
+                            <div class="flex items-center gap-4">
+                                <input type="number" name="profit" step="0.01" required 
+                                       class="w-48 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-lg font-bold" 
                                        placeholder="0.00">
                                 
-                                <div class="mt-2 p-3 bg-gray-50 rounded text-sm" x-show="selectedBasePrice > 0">
-                                    <span class="text-gray-500">Preço Final na Loja:</span>
-                                    <span class="font-bold text-green-600 text-lg">
-                                        R$ <span x-text="(selectedBasePrice + parseFloat(profit || 0)).toFixed(2)"></span>
-                                    </span>
+                                <div x-show="type === 'physical' && baseProduct" class="text-sm text-gray-500">
+                                     + Custo Base: <span class="font-bold text-gray-700">automático</span>
                                 </div>
                             </div>
+                            <p class="text-xs text-gray-500 mt-2" x-show="type === 'physical'">
+                                O preço final na loja será a soma do Custo Base + Seu Lucro.
+                            </p>
                         </div>
 
-                        <div class="mb-6">
-                            <label class="block text-sm font-bold text-gray-700 mb-2">Descrição</label>
-                            <textarea name="description" rows="4" required
-                                      class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                      placeholder="Descreva seu produto... Dica: Mencione aqui se houver doação para alguma causa!"></textarea>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                                <label class="block text-sm font-bold text-gray-700 mb-2">Foto para a Loja (Mockup)</label>
-                                <input type="file" name="image_mockup" accept="image/*" required class="block w-full text-sm text-gray-500">
-                                <p class="text-xs text-gray-400 mt-1">O que o cliente vê.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Capa da Loja (Mockup)</label>
+                                <input type="file" name="image" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
                             </div>
 
-                            <div class="border-2 border-dashed border-indigo-300 rounded-lg p-6 text-center bg-indigo-50">
-                                <label class="block text-sm font-bold text-indigo-700 mb-2">Arte para Impressão</label>
-                                <input type="file" name="file_artwork" accept="image/*" required class="block w-full text-sm text-gray-500">
-                                <p class="text-xs text-gray-400 mt-1">Arquivo em alta qualidade para produzirmos.</p>
+                            <div x-show="type === 'physical'" x-transition>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Arte para Impressão</label>
+                                <input type="file" name="file_artwork" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
                             </div>
                         </div>
 
-                        <div class="flex justify-end pt-4">
-                            <a href="{{ route('creator.dashboard') }}" class="mr-4 px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">Cancelar</a>
-                            <button type="submit" class="px-6 py-2 bg-purple-600 text-white font-bold rounded-md hover:bg-purple-700">Adicionar Produto</button>
+                        <div class="flex justify-end pt-6 border-t border-gray-100 mt-6">
+                            <a href="{{ route('creator.produtos.index') }}" class="mr-4 px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium">Cancelar</a>
+                            <button type="submit" class="px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-lg transition">
+                                Publicar Produto
+                            </button>
                         </div>
-                    </form>
 
+                    </div>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 </x-app-layout>

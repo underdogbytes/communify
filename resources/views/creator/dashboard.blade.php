@@ -99,7 +99,7 @@
                 <div class="p-6 border-b border-gray-200 flex justify-between items-center bg-gray-50">
                     <h3 class="font-bold text-gray-800">Últimos Pedidos</h3>
                     
-                    <a href="{{ route('creator.orders.index') }}" class="text-sm text-indigo-600 hover:text-indigo-900 font-bold hover:underline">
+                    <a href="{{ route('creator.order.index') }}" class="text-sm text-indigo-600 hover:text-indigo-900 font-bold hover:underline">
                         Ver Todos &rarr;
                     </a>
                 </div>
@@ -116,7 +116,7 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100 bg-white">
                             @forelse($recentOrders as $order)
-                                <tr class="hover:bg-gray-50 transition clickable-row cursor-pointer" onclick="window.location='{{ route('creator.orders.show', $order->id) }}'">
+                                <tr class="hover:bg-gray-50 transition clickable-row cursor-pointer" onclick="window.location='{{ route('creator.order.show', $order->id) }}'">
                                     <td class="px-6 py-4 text-gray-600">
                                         {{ $order->created_at->format('d/m/Y') }}
                                         <span class="text-xs text-gray-400 block">{{ $order->created_at->format('H:i') }}</span>

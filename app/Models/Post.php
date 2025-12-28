@@ -15,7 +15,7 @@ class Post extends Model
         'title',       // Novo
         'slug',        // Novo
         'content',
-        'image_path',
+        'image',
         'type',        // Novo
         'status',      // Novo
         'visibility',  // Novo
@@ -44,4 +44,22 @@ class Post extends Model
     {
         return $this->hasMany(Comment::class);
     }
+
+    public function likes()
+    {
+        return $this->belongsToMany(User::class, 'post_likes');
+    }
+
+    public function getIsLikedAttribute()
+    {
+        if (!auth()->check()) return false;
+        return $this->likes()->where('user_id', auth()->id())->exists();
+    }
+
+    // Apenas posts publicados
+    public function scopePublished($query)
+    {
+        return $query->where('status', 'published');
+    }
+
 }

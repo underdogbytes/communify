@@ -48,21 +48,37 @@ class User extends Authenticatable
 
     // --- RELACIONAMENTOS ---
 
-    // Um usuário (Criador) PODE TER UMA comunidade
     public function community()
     {
         return $this->hasOne(Community::class);
     }
 
-    // Um usuário (Comprador) PODE TER VÁRIOS pedidos
     public function orders()
     {
         return $this->hasMany(Order::class);
     }
 
-    // Um usuário (Leitor) pode SEGUIR VÁRIAS comunidades
     public function follows()
     {
         return $this->belongsToMany(Community::class, 'follows', 'user_id', 'community_id');
     }
+    
+    public function likes()
+    {
+        return $this->belongsToMany(Post::class, 'post_likes');
+    }
+
+    // --- ACESSOR MÁGICO (NOVO) ---
+    // Isso permite usar {{ auth()->user()->avatar_url }} na view
+    public function getAvatarUrlAttribute()
+    {
+        if ($this->avatar) {
+            return asset('storage/' . $this->avatar);
+        }
+
+        // Se não tiver foto, gera uma com as iniciais via API externa gratuita
+        $name = urlencode($this->name);
+        return "https://ui-avatars.com/api/?name={$name}&color=7F9CF5&background=EBF4FF";
+    }
+    
 }

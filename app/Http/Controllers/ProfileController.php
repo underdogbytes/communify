@@ -26,13 +26,27 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $data = $request->validated();
+        $user = $request->user();
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        // LÓGICA DE UPLOAD DE AVATAR
+        if ($request->hasFile('avatar')) {
+            // Se o usuário já tiver um avatar antigo (que não seja nulo), poderiamos deletar aqui.
+            // Por segurança inicial, vamos apenas salvar o novo.
+            
+            // Salva na pasta 'storage/app/public/avatars'
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $data['avatar'] = $path;
         }
 
-        $request->user()->save();
+        // Preenche os dados (Nome, Email, Bio, Location e o caminho do Avatar)
+        $user->fill($data);
+
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
+        }
+
+        $user->save();
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }
@@ -57,4 +71,19 @@ class ProfileController extends Controller
 
         return Redirect::to('/');
     }
+
+    /**
+     * Exibe o perfil público do usuário
+     */
+    public function showPublic(\App\Models\User $user)
+    {
+        // Carrega a comunidade que ele criou (se tiver)
+        $user->load('community');
+        
+        // Carrega as comunidades que ele segue
+        $following = $user->follows()->latest()->get();
+
+        return view('profile.public', compact('user', 'following'));
+    }
+    
 }

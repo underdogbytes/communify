@@ -55,4 +55,22 @@ class Product extends Model
         $baseCost = $this->baseProduct ? $this->baseProduct->base_price : 0;
         return $baseCost + $this->profit;
     }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function questions()
+    {
+        return $this->hasMany(ProductQuestion::class)->latest();
+    }
+    
+    // Média de estrelas (Atalho útil)
+    public function getRatingAttribute()
+    {
+        return round($this->reviews()->avg('rating'), 1) ?? 0;
+    }
+
+
 }

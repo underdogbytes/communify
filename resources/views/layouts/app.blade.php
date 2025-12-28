@@ -5,7 +5,20 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'Communify') }}</title>
+       <title>@yield('title', config('app.name', 'Communify'))</title>
+
+        <meta name="description" content="@yield('description', 'A plataforma para criadores de conteúdo e comunidades.')">
+        
+        <meta property="og:type" content="website">
+        <meta property="og:url" content="{{ url()->current() }}">
+        <meta property="og:title" content="@yield('og:title', config('app.name'))">
+        <meta property="og:description" content="@yield('og:description', 'Crie, conecte e monetize sua comunidade.')">
+        <meta property="og:image" content="@yield('og:image', asset('images/default-share.jpg'))">
+
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="@yield('og:title', config('app.name'))">
+        <meta name="twitter:description" content="@yield('og:description')">
+        <meta name="twitter:image" content="@yield('og:image', asset('images/default-share.jpg'))">
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />

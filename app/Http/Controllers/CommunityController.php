@@ -7,39 +7,48 @@ use Illuminate\Http\Request;
 
 class CommunityController extends Controller
 {
-    /**
-     * (J1-02) Página Explorar (Listagem de Comunidades)
-     */
-    public function index()
+    public function index(Request $request)
     {
-        $communities = Community::with('user')->latest()->get();
+        $query = Community::with('user')->withCount('followers');
+
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->has('category') && $request->category != '') {
+            $query->where('category', $request->category);
+        }
+
+        $communities = $query->orderByDesc('followers_count')
+                             ->latest()
+                             ->paginate(12);
+
         return view('community.index', compact('communities'));
     }
 
-    /**
-     * (J1-03) Página Pública da Comunidade (Feed + Loja)
-     */
     public function show($slug)
     {
-        // Busca a comunidade pelo slug
-        // Carrega também os posts (com autor e comentários) e os produtos
+        // Aqui usamos uma Closure (função anônima) dentro do with
+        // Isso filtra os posts DENTRO da comunidade
         $community = Community::where('slug', $slug)
-            ->with(['user', 'posts.user', 'posts.comments', 'products.baseProduct'])
+            ->with(['posts' => function($query) {
+                $query->published() // Scope do Model Post
+                      ->latest()
+                      ->with(['user', 'likes', 'comments.user']); // Carrega user dos comentários
+            }, 'products.baseProduct', 'user'])
             ->firstOrFail();
 
         return view('community.show', compact('community'));
     }
 
-    /**
-     * (J2-02) Seguir / Deixar de Seguir
-     */
     public function follow(Request $request, Community $community)
     {
         $user = auth()->user();
-
-        // Toggle: Se já segue, remove. Se não segue, adiciona.
         $user->follows()->toggle($community->id);
-
         return back();
     }
 }

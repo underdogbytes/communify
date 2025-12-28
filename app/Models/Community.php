@@ -17,10 +17,30 @@ class Community extends Model
         'description',
         'cover_image',
         'profile_image',
+        'instagram_handle',
+        'youtube_handle',
+        'whatsapp_group',
+        'accent_color',
+        'category',
     ];
 
+    // Lista oficial de categorias do sistema
+    public const CATEGORIES = [
+        'Tecnologia',
+        'Educação',
+        'Negócios',
+        'Saúde & Bem-estar',
+        'Games',
+        'Arte & Design',
+        'Estilo de Vida',
+        'Finanças',
+        'Esportes',
+        'Música',
+        'Outros'
+    ];
+    
     /**
-     * Evento automático: Quando criar a comunidade, gera o 'slug' (URL amigável)
+     * Evento automático: Quando criar a comunidade, gera o 'slug'
      */
     protected static function boot()
     {
@@ -29,33 +49,31 @@ class Community extends Model
         static::creating(function ($community) {
             $community->slug = Str::slug($community->name);
         });
+        
+        // CORREÇÃO: Ao editar o nome, atualiza o slug também?
+        // Geralmente NÃO se muda slug para não quebrar links antigos.
+        // Vamos deixar só no creating por segurança.
     }
 
     // --- RELACIONAMENTOS ---
 
-    // Pertence a um Dono
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    // Tem muitos posts
     public function posts()
     {
         return $this->hasMany(Post::class);
     }
 
-    // Tem muitos produtos
     public function products()
     {
         return $this->hasMany(Product::class);
     }
 
-    // --- A FUNÇÃO QUE FALTAVA ---
-    // Uma comunidade pode ser SEGUIDA POR VÁRIOS usuários
     public function followers()
     {
-        // Relação N-para-N usando a tabela 'follows'
         return $this->belongsToMany(User::class, 'follows', 'community_id', 'user_id');
     }
 }

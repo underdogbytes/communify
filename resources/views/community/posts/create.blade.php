@@ -5,62 +5,143 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Escrever Artigo - {{ $community->name }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
     <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        /* Ajustes finos para o editor ficar bonito */
-        .editor-toolbar { border-color: #f3f4f6; background: #fff; opacity: 0.8; }
-        .CodeMirror { border-color: #f3f4f6; border-radius: 8px; min-height: 400px; font-size: 1.1rem; padding: 10px; }
-        .editor-statusbar { display: none; } /* Esconde barra inferior feia */
+        .editor-toolbar { border-color: #e5e7eb; background: #fff; opacity: 1; border-radius: 8px 8px 0 0; }
+        .CodeMirror { border-color: #e5e7eb; border-radius: 0 0 8px 8px; min-height: 500px; font-size: 1.1rem; padding: 10px; color: #374151; }
+        .editor-statusbar { display: none; }
+        .file-input-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
+        .file-input-wrapper input[type=file] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; }
     </style>
 </head>
-<body class="bg-white text-gray-900 font-sans antialiased">
+<body class="bg-gray-50 text-gray-900 font-sans antialiased">
 
-    <nav class="border-b border-gray-100 py-4">
-        <div class="max-w-4xl mx-auto px-4 flex justify-between items-center">
-            <a href="{{ route('community.show', $community->slug) }}" class="text-gray-500 hover:text-gray-900 flex items-center gap-2">
-                &larr; Voltar
-            </a>
-            <div class="font-bold text-gray-400 text-sm uppercase tracking-wide">
-                Rascunho em {{ $community->name }}
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center">
+                    <a href="{{ route('community.show', $community->slug) }}" class="text-gray-500 hover:text-gray-900 flex items-center gap-2 transition">
+                        <i class="fa-solid fa-arrow-left"></i> Voltar
+                    </a>
+                    <span class="mx-4 text-gray-300">|</span>
+                    <span class="font-bold text-gray-700">Novo Artigo em {{ $community->name }}</span>
+                </div>
+                <div>
+                    <button form="article-form" type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-full font-bold transition shadow-sm flex items-center gap-2">
+                        @if(auth()->id() === $community->user_id)
+                            <span>Publicar Agora</span> <i class="fa-solid fa-paper-plane text-xs"></i>
+                        @else
+                            <span>Enviar para Aprovação</span> <i class="fa-solid fa-clock text-xs"></i>
+                        @endif
+                    </button>
+                </div>
             </div>
-            <button form="article-form" type="submit" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-full font-bold transition">
-                Publicar
-            </button>
         </div>
     </nav>
 
-    <div class="max-w-4xl mx-auto px-4 py-10">
-        <form id="article-form" action="{{ route('community.posts.store', $community) }}" method="POST">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <form id="article-form" action="{{ route('community.posts.store', $community) }}" method="POST" enctype="multipart/form-data">
             @csrf
             <input type="hidden" name="type" value="article">
 
-            <input type="text" 
-                   name="title" 
-                   placeholder="Título do seu artigo..." 
-                   class="w-full text-4xl md:text-5xl font-extrabold text-gray-900 border-none focus:ring-0 placeholder-gray-300 px-0 mb-6"
-                   required autofocus>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <div class="lg:col-span-2 space-y-6">
+                    <div>
+                        <input type="text" name="title" placeholder="Título do seu artigo..." 
+                               class="w-full text-4xl font-extrabold text-gray-900 border-none bg-transparent focus:ring-0 placeholder-gray-300 px-0 leading-tight" 
+                               required autofocus>
+                    </div>
 
-            <textarea name="content" id="markdown-editor" placeholder="Escreva sua história aqui..."></textarea>
+                    <div class="bg-white rounded-lg shadow-sm">
+                        <textarea name="content" id="markdown-editor"></textarea>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-1 space-y-6">
+                    
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
+                        <h3 class="font-bold text-gray-800 border-b pb-2 mb-4">Configurações de Publicação</h3>
+
+                        @if(auth()->id() !== $community->user_id)
+                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800 flex gap-2 items-start">
+                                <i class="fa-solid fa-circle-info mt-0.5"></i>
+                                <div>
+                                    <span class="font-bold">Atenção:</span> Este post passará pela aprovação dos moderadores antes de aparecer no feed público.
+                                </div>
+                            </div>
+                        @endif
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Imagem de Capa</label>
+                            <div class="file-input-wrapper bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg h-32 flex flex-col items-center justify-center text-gray-400 hover:bg-gray-100 hover:border-indigo-400 transition">
+                                <i class="fa-regular fa-image text-2xl mb-2"></i>
+                                <span class="text-xs">Clique para fazer upload</span>
+                                <input type="file" name="image" accept="image/*" onchange="previewImage(this)">
+                            </div>
+                            <div id="image-preview" class="mt-2 hidden">
+                                <img src="" class="w-full h-32 object-cover rounded-lg">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Categoria</label>
+                            <select name="category" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="Artigo">📄 Artigo (Padrão)</option>
+                                <option value="Diário">📔 Diário / Pessoal</option>
+                                <option value="Nota">📝 Nota Rápida</option>
+                                <option value="Atualização">📢 Atualização / News</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Tags</label>
+                            <input type="text" name="tags" placeholder="Ex: tecnologia, tutorial, php" 
+                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                            <p class="text-xs text-gray-500 mt-1">Separe por vírgula.</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Quem pode ver?</label>
+                            <select name="visibility" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="public">🌍 Público (Todos)</option>
+                                <option value="followers">👥 Apenas Seguidores</option>
+                                <option value="members" disabled>🔒 Membros Pagos (Em breve)</option>
+                            </select>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
         </form>
     </div>
 
     <script>
+        // Inicializa o Editor
         const easyMDE = new EasyMDE({
             element: document.getElementById('markdown-editor'),
             spellChecker: false,
-            placeholder: "Comece a escrever...",
-            toolbar: ["bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|", "link", "image", "|", "preview"],
+            placeholder: "Escreva sua história aqui...",
+            toolbar: ["bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|", "link", "image", "code", "|", "preview"],
             status: false,
-            autosave: {
-                enabled: true,
-                uniqueId: "article_draft_{{ $community->id }}",
-                delay: 1000,
-            },
+            minHeight: "400px",
         });
-    </script>
 
+        // Preview de Imagem Simples
+        function previewImage(input) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('image-preview').classList.remove('hidden');
+                    document.querySelector('#image-preview img').src = e.target.result;
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+    </script>
 </body>
 </html>

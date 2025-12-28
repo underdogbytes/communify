@@ -20,14 +20,16 @@ class OrderController extends Controller
     {
         $order = auth()->user()->orders()->where('status', 'draft')->with('items.product')->first();
 
+        // Se não tem carrinho, mostra view vazia
         if (!$order) {
-            return view('order.empty');
+            return view('order.empty'); // Certifique-se que o arquivo é resources/views/orders/empty.blade.php
         }
 
+        // Se tem carrinho, usa a view de show (que tem a lógica de checkout)
         return view('order.show', compact('order'));
     }
 
-    // ADICIONAR AO CARRINHO (CORRIGIDO)
+    // ADICIONAR AO CARRINHO
     public function store(Request $request)
     {
         $request->validate([
@@ -36,9 +38,6 @@ class OrderController extends Controller
         ]);
 
         $product = Product::findOrFail($request->product_id);
-        
-        // CORREÇÃO: Usamos o Accessor do Model em vez de calcular na mão
-        // Isso evita o erro "attempt to read property on null"
         $unitPrice = $product->total_price;
 
         // 1. Tenta achar um carrinho aberto
@@ -65,16 +64,11 @@ class OrderController extends Controller
         ]);
 
         // 4. Atualiza total
-        $order->total_amount = $order->items()->sum('price');
-        $order->save();
+        $this->recalculateOrderTotal($order);
 
         return back()->with('success', 'Produto adicionado ao carrinho!'); 
     }
 
-
-    /**
-     * Remover item do carrinho
-     */
     public function removeItem(OrderItem $item)
     {
         if ($item->order->user_id !== auth()->id() || $item->order->status !== 'draft') {
@@ -94,9 +88,6 @@ class OrderController extends Controller
         return back()->with('success', 'Item removido.');
     }
 
-    /**
-     * Atualizar Quantidade
-     */
     public function updateItemQuantity(Request $request, OrderItem $item)
     {
         if ($item->order->user_id !== auth()->id() || $item->order->status !== 'draft') {
@@ -118,9 +109,6 @@ class OrderController extends Controller
         return back();
     }
 
-    /**
-     * Função auxiliar para recalcular totais
-     */
     private function recalculateOrderTotal(Order $order)
     {
         $itemsTotal = $order->items->sum(function($item) {
@@ -131,14 +119,14 @@ class OrderController extends Controller
         $order->save();
     }
 
-    // MOSTRAR CHECKOUT
+    // MOSTRAR PEDIDO (CHECKOUT OU DETALHES)
     public function show(Order $order)
     {
         if ($order->user_id !== auth()->id()) abort(403);
         return view('order.show', compact('order'));
     }
 
-    // FINALIZAR COMPRA (CORRIGIDO PARA DIGITAL)
+    // FINALIZAR COMPRA
     public function finalize(Request $request, Order $order)
     {
         if ($order->user_id !== auth()->id()) abort(403);
@@ -153,7 +141,7 @@ class OrderController extends Controller
             'address_state' => 'required|string|max:2',
         ]);
 
-        // Atualiza usuário
+        // Atualiza dados do usuário
         auth()->user()->update([
             'full_name' => $request->full_name,
             'cpf' => $request->cpf,
@@ -165,13 +153,10 @@ class OrderController extends Controller
             'address_state' => $request->address_state,
         ]);
 
-        // BÔNUS: Lógica de Frete Inteligente
-        // Verifica se existe algum produto físico no carrinho
+        // Frete
         $hasPhysicalItems = $order->items->contains(function($item) {
             return $item->product->type === 'physical';
         });
-
-        // Se tiver item físico, cobra 30. Se for tudo digital, frete grátis.
         $shippingCost = $hasPhysicalItems ? 30.00 : 0.00;
         
         $donationAmount = $request->input('donation_amount', 0);
@@ -189,7 +174,15 @@ class OrderController extends Controller
             'total_amount' => $finalTotal
         ]);
 
-        return back()->with('success', 'Pedido atualizado! Realize o pagamento.');
+        // CORREÇÃO CRÍTICA: REDIRECIONAR PARA A ROTA DE SUCESSO
+        return redirect()->route('order.success', $order->id);
+    }
+
+    // EXIBIR TELA DE SUCESSO / PIX
+    public function success(Order $order)
+    {
+        if ($order->user_id !== auth()->id()) abort(403);
+        return view('order.success', compact('order'));
     }
 
     // UPLOAD COMPROVANTE

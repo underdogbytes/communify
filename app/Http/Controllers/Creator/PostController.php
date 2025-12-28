@@ -68,5 +68,46 @@ class PostController extends Controller
         return back()->with('success', 'Post deletado.');
     }
     
-    // Métodos edit/update deixamos para depois para agilizar
+    
+    /**
+     * Lista posts pendentes de aprovação
+     */
+    public function moderation()
+    {
+        $community = auth()->user()->community;
+        
+        $pendingPosts = $community->posts()
+                                  ->where('status', 'pending')
+                                  ->with('user')
+                                  ->latest()
+                                  ->get();
+
+        return view('creator.posts.moderation', compact('pendingPosts'));
+    }
+
+    /**
+     * Aprovar Post
+     */
+    public function approve($id)
+    {
+        $post = auth()->user()->community->posts()->findOrFail($id);
+        $post->update(['status' => 'published']);
+        
+        // Opcional: Notificar o autor que foi aprovado
+        
+        return back()->with('success', 'Post aprovado e publicado!');
+    }
+
+    /**
+     * Rejeitar (Excluir)
+     */
+    public function reject($id)
+    {
+        $post = auth()->user()->community->posts()->findOrFail($id);
+        $post->delete();
+        
+        return back()->with('success', 'Post rejeitado.');
+    }
+
+    
 }
